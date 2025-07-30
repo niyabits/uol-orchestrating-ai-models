@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "storylab"
+version = "0.1.0"
+description = "Story generation pipelines and Gradio interface"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "transformers>=4.42.0",
+  "torch>=2.1.0",
+  "accelerate>=0.30.0",
+  "sentencepiece",
+  "pydantic>=2.5.0",
+  "orjson",
+  "gradio>=4.44.0"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
