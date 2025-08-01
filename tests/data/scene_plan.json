@@ -1,0 +1,36 @@
+{
+  "location": "Oxford University, England",
+  "time": "Late 19th century",
+  "weather": "Overcast with a distant rumble",
+  "mood": "Mysterious and suspenseful",
+  "pov": "Third person limited",
+  "camera_style": "Close-up shots of Elizabeth's face",
+  "characters": [
+    {
+      "name": "Elizabeth Hawthorne",
+      "role": "Protagonist",
+      "objective": "Understand the lost dialect and its potential impact on modern science",
+      "emotion": "Determined yet paranoid"
+    },
+    {
+      "name": "Anonymous Peer",
+      "role": "Antagonistic Force",
+      "objective": "Claim credit for any discovery or breakthrough in academia",
+      "emotion": "Envious and calculating"
+    }
+  ],
+  "key_props": [
+    "Ancient manuscript",
+    "Linguistic breakthrough",
+    "Meteorological phenomena"
+  ],
+  "beats": [
+    "Elizabeth discovers the manuscript hinting at a language linked to weather patterns."
+  ],
+  "sensory": [
+    {
+      "modality": "Visual",
+      "detail": "A gentle breeze caused by Elizabeth's initial experiment."
+    }
+  ]
+}
