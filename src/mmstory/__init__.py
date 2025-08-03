@@ -7,6 +7,10 @@ __all__ = [
     "render_scene_prose",
     "generate_dialogue",
     "style_transfer",
+    "SceneToImageGenerator",
+    "CharacterPortraitGenerator",
+    "ImageGenerationResult",
+    "DiffusersImageBackend",
     "SceneSchema",
     "Character",
     "SensoryBeat",
@@ -23,6 +27,10 @@ _ATTR_TO_MODULE = {
     "render_scene_prose": (".scene", "render_scene_prose"),
     "generate_dialogue": (".dialogue", "generate_dialogue"),
     "style_transfer": (".style", "style_transfer"),
+    "SceneToImageGenerator": (".image", "SceneToImageGenerator"),
+    "CharacterPortraitGenerator": (".image", "CharacterPortraitGenerator"),
+    "ImageGenerationResult": (".image", "ImageGenerationResult"),
+    "DiffusersImageBackend": (".image", "DiffusersImageBackend"),
     "SceneSchema": (".schema", "SceneSchema"),
     "Character": (".schema", "Character"),
     "SensoryBeat": (".schema", "SensoryBeat"),
@@ -53,6 +61,12 @@ if TYPE_CHECKING:  # pragma: no cover - import for type checkers only
     from .scene import scene_json_from_outline, render_scene_prose
     from .dialogue import generate_dialogue
     from .style import style_transfer
+    from .image import (
+        SceneToImageGenerator,
+        CharacterPortraitGenerator,
+        ImageGenerationResult,
+        DiffusersImageBackend,
+    )
     from .schema import SceneSchema, Character, SensoryBeat
     from .decoding import DecodeCfg
     from .affect import (
