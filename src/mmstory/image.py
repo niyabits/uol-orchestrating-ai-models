@@ -1,20 +1,18 @@
 """Image generation utilities for transforming narrative structures into visual assets.
 
-The module provides two high-level generators:
+Two high-level generators sit on top of an interchangeable backend:
 
-* :class:`SceneToImageGenerator` converts a structured :class:`~mmstory.schema.SceneSchema`
-  instance into a cinematic prompt and drives a diffusion backend. FLUX.1 Schnell is used by
-  default because it trades a small amount of photorealism for remarkable layout coherence and
-  fast iteration speed – exactly what storyboard ideation calls for.
-* :class:`CharacterPortraitGenerator` focuses on hero shots of individual characters, leaning on
-  the SDXL Realistic Vision family to preserve facial structure while still responding strongly to
-  textual style cues. The result is a portrait-driven prompt tuned for casting explorations.
+* :class:`SceneToImageGenerator` converts :class:`~mmstory.schema.SceneSchema` instances into
+  cinematic prompts. The loader defaults to the FLUX.1 Schnell family but transparently falls back
+  to more permissive SDXL checkpoints when gated repos are unavailable.
+* :class:`CharacterPortraitGenerator` emphasises hero shots of individual characters. It first
+  attempts a Realistic Vision SDXL checkpoint and then slides down to base SDXL or turbo variants.
 
-Both generators share an ``ImageBackend`` protocol so the heavy-weight diffusion pipeline can be
-swapped for deterministic stubs in unit tests.
+Both generators share an ``ImageBackend`` protocol so unit tests can inject deterministic stubs.
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 import io
 import json
@@ -78,13 +76,19 @@ class DiffusersImageBackend:
         self,
         model_id: str,
         *,
+        fallback_model_ids: Optional[Sequence[str]] = None,
         device: Optional[str] = None,
         torch_dtype: Any = None,
+        auth_token: Optional[str] = None,
     ) -> None:
-        self.model_id = model_id
+        self._candidate_ids = [model_id]
+        if fallback_model_ids:
+            self._candidate_ids.extend(list(fallback_model_ids))
         self.device = device
         self.torch_dtype = torch_dtype
         self._pipeline = None
+        self._loaded_model_id: Optional[str] = None
+        self.auth_token = auth_token or os.environ.get("MMSTORY_HF_TOKEN") or os.environ.get("HF_TOKEN")
 
     def _ensure_pipeline(self):
         if self._pipeline is not None:
@@ -96,14 +100,25 @@ class DiffusersImageBackend:
                 "The diffusers package is required for DiffusersImageBackend"
             ) from exc
 
-        pipeline = AutoPipelineForText2Image.from_pretrained(
-            self.model_id,
-            torch_dtype=self.torch_dtype,
-        )
-        if self.device is not None:
-            pipeline = pipeline.to(self.device)
-        self._pipeline = pipeline
-        return pipeline
+        last_error: Optional[Exception] = None
+        for model_id in self._candidate_ids:
+            try:
+                pipeline = AutoPipelineForText2Image.from_pretrained(
+                    model_id,
+                    torch_dtype=self.torch_dtype,
+                    token=self.auth_token,
+                )
+                if self.device is not None:
+                    pipeline = pipeline.to(self.device)
+                self._pipeline = pipeline
+                self._loaded_model_id = model_id
+                return pipeline
+            except Exception as exc:  # pragma: no cover - network/model specific
+                last_error = exc
+                continue
+        raise RuntimeError(
+            f"Unable to load any diffusion models from candidates: {self._candidate_ids}"
+        ) from last_error
 
     def __call__(
         self,
@@ -135,7 +150,7 @@ class DiffusersImageBackend:
         )
         image = output.images[0]
         meta = {
-            "model": self.model_id,
+            "model": self._loaded_model_id,
             "safety_checker": getattr(output, "nsfw_content_detected", None),
         }
         buffer = io.BytesIO()
@@ -190,6 +205,10 @@ class SceneToImageGenerator:
         backend: Optional[ImageBackend] = None,
         backend_factory: Optional[Callable[[], ImageBackend]] = None,
         model_id: str = "black-forest-labs/FLUX.1-schnell",
+        fallback_model_ids: Optional[Sequence[str]] = (
+            "stabilityai/sdxl-turbo",
+            "stabilityai/stable-diffusion-xl-base-1.0",
+        ),
         width: int = 1024,
         height: int = 576,
         num_inference_steps: int = 28,
@@ -201,7 +220,10 @@ class SceneToImageGenerator:
         self._backend = backend
         self._backend_factory = backend_factory
         if backend is None and backend_factory is None:
-            self._backend_factory = lambda: DiffusersImageBackend(model_id=model_id)
+            self._backend_factory = lambda: DiffusersImageBackend(
+                model_id=model_id,
+                fallback_model_ids=fallback_model_ids,
+            )
         self.width = width
         self.height = height
         self.num_inference_steps = num_inference_steps
@@ -275,6 +297,10 @@ class CharacterPortraitGenerator:
         backend: Optional[ImageBackend] = None,
         backend_factory: Optional[Callable[[], ImageBackend]] = None,
         model_id: str = "SG161222/Realistic_Vision_V5.1-noVAE",
+        fallback_model_ids: Optional[Sequence[str]] = (
+            "stabilityai/stable-diffusion-xl-base-1.0",
+            "stabilityai/sdxl-turbo",
+        ),
         width: int = 768,
         height: int = 1024,
         num_inference_steps: int = 30,
@@ -287,7 +313,10 @@ class CharacterPortraitGenerator:
         self._backend = backend
         self._backend_factory = backend_factory
         if backend is None and backend_factory is None:
-            self._backend_factory = lambda: DiffusersImageBackend(model_id=model_id)
+            self._backend_factory = lambda: DiffusersImageBackend(
+                model_id=model_id,
+                fallback_model_ids=fallback_model_ids,
+            )
         self.width = width
         self.height = height
         self.num_inference_steps = num_inference_steps
