@@ -22,6 +22,7 @@ from mmstory import (
     Character,
     CharacterPortraitGenerator,
     SceneToImageGenerator,
+    VoiceSynthesisModel,
     expand_prompt,
     generate_dialogue,
     render_scene_prose,
@@ -35,9 +36,19 @@ DEFAULT_CHARACTERS = [
     ["Elizabeth Hawthorne", "Protagonist", "Master the storm-binding dialect", "Determined"],
     ["Brother Ambrose", "Mentor", "Guide Elizabeth without breaking his vows", "Guarded"],
 ]
+VOICE_SEGMENT_HEADERS = [
+    "Segment",
+    "Sentiment",
+    "Confidence",
+    "Pace",
+    "Pitch",
+    "Timbre",
+    "Evidence",
+]
 
 SCENE_IMAGE_GENERATOR = SceneToImageGenerator()
 CHAR_PORTRAIT_GENERATOR = CharacterPortraitGenerator()
+VOICE_SYNTHESIZER = VoiceSynthesisModel()
 
 
 def _rows_to_dicts(rows: Iterable[Any]) -> List[Dict[str, str]]:
@@ -173,11 +184,54 @@ def generate_story_bundle(
     scene_image = None
     portrait_prompt = ""
     portrait_image = None
+    voice_summary = ""
+    voice_segments_table: List[List[str]] = []
+    voice_ssml = ""
+    voice_script = ""
     warnings: List[str] = []
 
     seed_value = _parse_seed(image_seed)
     if image_seed.strip() and seed_value is None:
         warnings.append("Image seed must be numeric; using random seed instead.")
+
+    primary_voice_text = styled.strip() or prose.strip()
+    voice_source_parts: List[str] = []
+    if primary_voice_text:
+        voice_source_parts.append(primary_voice_text)
+    if dialogue.strip():
+        voice_source_parts.append(dialogue.strip())
+    voice_source = "\n\n".join(part for part in voice_source_parts if part)
+
+    if voice_source:
+        try:
+            voice_result = VOICE_SYNTHESIZER.synthesize(voice_source)
+            scores = voice_result.overall.scores
+            voice_summary = (
+                f"**Overall sentiment:** {voice_result.overall.label} "
+                f"(confidence {voice_result.overall.confidence:.2f})\n\n"
+                f"Scores — positive: {scores.get('positive', 0.0):.2f}, "
+                f"negative: {scores.get('negative', 0.0):.2f}, "
+                f"neutral: {scores.get('neutral', 0.0):.2f}"
+            )
+            voice_segments_table = [
+                [
+                    str(idx + 1),
+                    segment.sentiment,
+                    f"{segment.confidence:.2f}",
+                    segment.pace_descriptor,
+                    segment.pitch_shift,
+                    segment.timbre,
+                    ", ".join(segment.evidence),
+                ]
+                for idx, segment in enumerate(voice_result.segments)
+            ]
+            voice_ssml = voice_result.ssml
+            voice_script = voice_result.narration_script
+        except Exception as exc:
+            warnings.append(f"Voice synthesis failed: {exc}")
+            voice_summary = "Voice synthesis unavailable."
+    else:
+        voice_summary = "No narrative content available for voice synthesis."
 
     if enable_images:
         try:
@@ -223,6 +277,10 @@ def generate_story_bundle(
         scene_image,
         portrait_prompt,
         portrait_image,
+        voice_summary,
+        voice_segments_table,
+        voice_ssml,
+        voice_script,
         warning_text,
     )
 
@@ -313,6 +371,17 @@ with gr.Blocks(title="Story Lab") as demo:
             portrait_prompt_out = gr.Textbox(label="Portrait Prompt", lines=8)
             portrait_image_out = gr.Image(label="Character Portrait", type="pil")
             warning_out = gr.Markdown(label="Diagnostics")
+        with gr.TabItem("Voice"):
+            voice_summary_out = gr.Markdown(label="Voice Summary")
+            voice_segments_out = gr.Dataframe(
+                headers=VOICE_SEGMENT_HEADERS,
+                datatype=["str"] * len(VOICE_SEGMENT_HEADERS),
+                row_count=(1, "dynamic"),
+                interactive=False,
+                label="Segment Plan",
+            )
+            voice_ssml_out = gr.Textbox(label="SSML Plan", lines=10)
+            voice_script_out = gr.Textbox(label="Narration Script", lines=10)
 
     generate_btn.click(
         fn=generate_story_bundle,
@@ -340,6 +409,10 @@ with gr.Blocks(title="Story Lab") as demo:
             scene_image_out,
             portrait_prompt_out,
             portrait_image_out,
+            voice_summary_out,
+            voice_segments_out,
+            voice_ssml_out,
+            voice_script_out,
             warning_out,
         ],
     )
