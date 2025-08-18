@@ -1,4 +1,4 @@
-"""Image generation utilities for transforming narrative structures into visual assets.
+"""Image generation utilities for changing narrative structures into images.
 
 Two high-level generators sit on top of an interchangeable backend:
 

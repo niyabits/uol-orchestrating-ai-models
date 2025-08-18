@@ -22,6 +22,7 @@ __all__ = [
     "VoiceSynthesisModel",
     "VoiceSynthesisResult",
     "VoiceSegment",
+    "VoiceAudioResult",
 ]
 
 _ATTR_TO_MODULE = {
@@ -45,6 +46,7 @@ _ATTR_TO_MODULE = {
     "VoiceSynthesisModel": (".voice", "VoiceSynthesisModel"),
     "VoiceSynthesisResult": (".voice", "VoiceSynthesisResult"),
     "VoiceSegment": (".voice", "VoiceSegment"),
+    "VoiceAudioResult": (".voice", "VoiceAudioResult"),
 }
 
 
@@ -81,4 +83,4 @@ if TYPE_CHECKING:  # pragma: no cover - import for type checkers only
         SentimentResult,
         EmotionResult,
     )
-    from .voice import VoiceSynthesisModel, VoiceSynthesisResult, VoiceSegment
+    from .voice import VoiceAudioResult, VoiceSegment, VoiceSynthesisModel, VoiceSynthesisResult

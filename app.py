@@ -1,10 +1,7 @@
-"""Interactive Gradio UI for the mmstory toolchain.
+"""Interactive UI made with Gradio
 
-This surfaces the same primitives used in the smoke tests, but in a workflow
-that mirrors how an author or narrative designer might iterate on a concept.
 Users can start from a seed idea, expand it into a brief, drill into a specific
-beat, explore dialogue beats, style variations, and now scene + character
-visualisations powered by diffusion backends.
+beat, explore dialogue beats, style variations.
 """
 from __future__ import annotations
 
@@ -188,6 +185,7 @@ def generate_story_bundle(
     voice_segments_table: List[List[str]] = []
     voice_ssml = ""
     voice_script = ""
+    voice_audio_data = None
     warnings: List[str] = []
 
     seed_value = _parse_seed(image_seed)
@@ -227,6 +225,11 @@ def generate_story_bundle(
             ]
             voice_ssml = voice_result.ssml
             voice_script = voice_result.narration_script
+            try:
+                audio_result = VOICE_SYNTHESIZER.render_audio(voice_result)
+                voice_audio_data = (audio_result.sample_rate, audio_result.waveform)
+            except Exception as audio_exc:
+                warnings.append(f"Voice audio rendering failed: {audio_exc}")
         except Exception as exc:
             warnings.append(f"Voice synthesis failed: {exc}")
             voice_summary = "Voice synthesis unavailable."
@@ -281,6 +284,7 @@ def generate_story_bundle(
         voice_segments_table,
         voice_ssml,
         voice_script,
+        voice_audio_data,
         warning_text,
     )
 
@@ -380,6 +384,7 @@ with gr.Blocks(title="Story Lab") as demo:
                 interactive=False,
                 label="Segment Plan",
             )
+            voice_audio_out = gr.Audio(label="Narration Preview", type="numpy")
             voice_ssml_out = gr.Textbox(label="SSML Plan", lines=10)
             voice_script_out = gr.Textbox(label="Narration Script", lines=10)
 
@@ -409,6 +414,7 @@ with gr.Blocks(title="Story Lab") as demo:
             scene_image_out,
             portrait_prompt_out,
             portrait_image_out,
+            voice_audio_out,
             voice_summary_out,
             voice_segments_out,
             voice_ssml_out,

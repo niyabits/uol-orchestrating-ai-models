@@ -37,8 +37,13 @@ def test_story_bundle_includes_voice_outputs() -> None:
     voice_segments = result[10]
     voice_ssml = result[11]
     voice_script = result[12]
+    voice_audio = result[13]
 
     assert "Overall sentiment" in voice_summary
     assert voice_segments, "voice plan should produce segment rows"
     assert voice_ssml.startswith("<speak><voice")
     assert voice_script, "narration script should not be empty"
+    assert voice_audio is not None
+    sample_rate, waveform = voice_audio
+    assert sample_rate == 22050
+    assert getattr(waveform, "size", len(waveform)) > 1000
