@@ -384,9 +384,9 @@ with gr.Blocks(title="Story Lab") as demo:
                 interactive=False,
                 label="Segment Plan",
             )
-            voice_audio_out = gr.Audio(label="Narration Preview", type="numpy")
             voice_ssml_out = gr.Textbox(label="SSML Plan", lines=10)
             voice_script_out = gr.Textbox(label="Narration Script", lines=10)
+            voice_audio_out = gr.Audio(label="Narration Preview", type="numpy")
 
     generate_btn.click(
         fn=generate_story_bundle,
@@ -414,11 +414,11 @@ with gr.Blocks(title="Story Lab") as demo:
             scene_image_out,
             portrait_prompt_out,
             portrait_image_out,
-            voice_audio_out,
             voice_summary_out,
             voice_segments_out,
             voice_ssml_out,
             voice_script_out,
+            voice_audio_out,
             warning_out,
         ],
     )
